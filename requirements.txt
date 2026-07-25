@@ -1,0 +1,11 @@
+# Core web framework
+Django==5.0.6
+
+# For handling image thumbnails / file type detection
+Pillow==10.3.0
+
+# Stripe payment gateway SDK (Checkout Sessions + webhook verification)
+stripe==9.8.0
+
+# For human-readable file sizes in templates (e.g. "2.3 MB")
+django-widget-tweaks==1.5.0

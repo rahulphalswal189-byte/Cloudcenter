@@ -1,0 +1,43 @@
+{% extends 'storage_app/base.html' %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="container text-center">
+        <span class="badge-glass mb-3"><i class="bi bi-stars"></i> Secure. Fast. Simple.</span>
+        <h1 class="hero-title">Your files, safe in the <span class="text-gradient">cloud</span></h1>
+        <p class="hero-subtitle">Upload, organize, and access your files from anywhere. CloudVault gives you a
+            beautiful, secure home for everything you store.</p>
+        <div class="hero-actions">
+            <a href="{% url 'register' %}" class="btn btn-gradient btn-lg"><i class="bi bi-rocket-takeoff-fill"></i> Create Free Account</a>
+            <a href="{% url 'login' %}" class="btn btn-outline-glass btn-lg">Login</a>
+        </div>
+    </div>
+</section>
+
+<section class="container my-5">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="glass-card feature-card">
+                <i class="bi bi-cloud-upload-fill feature-icon"></i>
+                <h5>Drag &amp; Drop Upload</h5>
+                <p class="text-muted">Upload files instantly with a live progress bar and instant validation.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card feature-card">
+                <i class="bi bi-shield-lock-fill feature-icon"></i>
+                <h5>Secure by Design</h5>
+                <p class="text-muted">CSRF protection, hashed passwords, and strict file-type validation.</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card feature-card">
+                <i class="bi bi-folder2-open feature-icon"></i>
+                <h5>Stay Organized</h5>
+                <p class="text-muted">Create folders, rename files, and search your entire library instantly.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% load static %}
+<!DOCTYPE html>
+{# base.html: master layout shared by every page - navbar, sidebar, theme, Bootstrap 5 #}
+<html lang="en" data-theme="{{ theme_preference|default:'light' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cloud Storage{% endblock %} | CloudVault</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+    <!-- AOS (Animate On Scroll) - lightweight scroll animation library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Our custom styles -->
+    <link rel="stylesheet" href="{% static 'storage_app/css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+
+    {% if not user.is_authenticated %}
+    <script>
+        // Auto dark/light theme for logged-out visitors, based on OS preference.
+        // Logged-in users always use their saved preference from the server instead.
+        (function () {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    {% endif %}
+</head>
+<body>
+
+<!-- ============ TOAST NOTIFICATIONS CONTAINER ============ -->
+<div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer" style="z-index: 1200;"></div>
+
+{% if user.is_authenticated %}
+    <!-- ============ SIDEBAR (shown only when logged in) ============ -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <i class="bi bi-cloud-fill"></i> <span>CloudVault</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a></li>
+            <li><a href="{% url 'upload' %}" class="{% if request.resolver_match.url_name == 'upload' %}active{% endif %}"><i class="bi bi-cloud-upload-fill"></i> Upload</a></li>
+            <li><a href="{% url 'my_files' %}" class="{% if request.resolver_match.url_name == 'my_files' %}active{% endif %}"><i class="bi bi-folder-fill"></i> My Files</a></li>
+            <li><a href="{% url 'profile' %}" class="{% if request.resolver_match.url_name == 'profile' %}active{% endif %}"><i class="bi bi-person-circle"></i> Profile</a></li>
+            <li><a href="{% url 'pricing' %}" class="{% if request.resolver_match.url_name == 'pricing' %}active{% endif %}"><i class="bi bi-credit-card-fill"></i> Upgrade Plan</a></li>
+            <li><a href="{% url 'settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}active{% endif %}"><i class="bi bi-gear-fill"></i> Settings</a></li>
+            {% if user.is_staff %}
+            <li><a href="{% url 'admin:index' %}"><i class="bi bi-shield-lock-fill"></i> Admin Panel</a></li>
+            {% endif %}
+        </ul>
+
+        {% if storage %}
+        <div class="sidebar-storage">
+            <div class="d-flex justify-content-between small mb-1">
+                <span>Storage</span>
+                <span>{% if storage.is_unlimited %}<i class="bi bi-infinity"></i>{% else %}{{ storage.percent_used }}%{% endif %}</span>
+            </div>
+            <div class="storage-bar">
+                <div class="storage-bar-fill" style="width: {% if storage.is_unlimited %}100{% else %}{{ storage.percent_used }}{% endif %}%;"></div>
+            </div>
+            <div class="small text-muted mt-1">
+                {% if storage.is_unlimited %}
+                    {{ storage.used_bytes|filesizeformat }} used &bull; Unlimited plan
+                {% else %}
+                    {{ storage.used_bytes|filesizeformat }} of {{ storage.quota_bytes|filesizeformat }}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'logout' %}" class="mt-3">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-logout w-100"><i class="bi bi-box-arrow-right"></i> Logout</button>
+        </form>
+    </nav>
+{% endif %}
+
+<div class="{% if user.is_authenticated %}main-content{% endif %}">
+
+    <!-- ============ TOP NAVBAR ============ -->
+    <header class="topbar">
+        {% if user.is_authenticated %}
+            <button class="btn btn-sm btn-toggle-sidebar d-lg-none" id="sidebarToggle"><i class="bi bi-list"></i></button>
+        {% else %}
+            <a href="{% url 'home' %}" class="topbar-brand"><i class="bi bi-cloud-fill"></i> CloudVault</a>
+        {% endif %}
+
+        <div class="topbar-actions">
+            <button id="themeToggle" class="btn btn-theme-toggle" title="Toggle dark/light theme"
+                    {% if user.is_authenticated %}data-toggle-url="{% url 'toggle_theme' %}"{% endif %}>
+                <i class="bi bi-moon-stars-fill dark-icon"></i>
+                <i class="bi bi-sun-fill light-icon"></i>
+            </button>
+
+            {% if user.is_authenticated %}
+                <span class="topbar-username"><i class="bi bi-person-fill"></i> {{ user.username }}</span>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2">Login</a>
+                <a href="{% url 'register' %}" class="btn btn-gradient btn-sm">Get Started</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- ============ FLASH MESSAGES (rendered as toasts by script.js) ============ -->
+    {% if messages %}
+    <div id="djangoMessages" class="d-none">
+        {% for message in messages %}
+            <div class="django-message" data-tag="{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ============ PAGE CONTENT ============ -->
+    <main class="page-content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<!-- Bootstrap 5 JS bundle (includes Popper) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<!-- AOS scroll animations -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+<!-- Chart.js for the dashboard storage chart -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+<script src="{% static 'storage_app/js/script.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,122 @@
+{% extends 'storage_app/base.html' %}
+{% block title %}Upload Files{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h2 class="page-title mb-4">Upload Files</h2>
+
+    <div class="glass-card">
+        <!-- The form posts normally (progress bar is simulated via JS + XHR for a real progress event) -->
+        <form id="uploadForm" method="post" enctype="multipart/form-data" action="{% url 'upload' %}">
+            {% csrf_token %}
+
+            <div id="dropZone" class="drop-zone">
+                <i class="bi bi-cloud-arrow-up-fill drop-zone-icon"></i>
+                <h5>Drag &amp; drop files here</h5>
+                <p class="text-muted">or click to browse from your computer</p>
+                <input type="file" name="files" id="fileInput" multiple hidden>
+                <p class="small text-muted mb-0">Max {{ MAX_UPLOAD_SIZE_MB|default:"50" }}MB per file</p>
+            </div>
+
+            <div id="fileList" class="file-preview-list mt-3"></div>
+
+            <div class="row g-3 mt-2">
+                <div class="col-md-6">
+                    <label class="form-label">Upload to folder (optional)</label>
+                    <select name="folder" class="form-select">
+                        <option value="">-- Root (no folder) --</option>
+                        {% for folder in folders %}
+                            <option value="{{ folder.id }}">{{ folder.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Progress bar (feature #19) -->
+            <div class="progress upload-progress mt-4 d-none" id="progressWrapper">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-gradient" id="progressBar" style="width:0%">0%</div>
+            </div>
+
+            <button type="submit" id="uploadBtn" class="btn btn-gradient mt-4"><i class="bi bi-upload"></i> Upload Files</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Wire up drag & drop + client-side preview + XHR progress bar for upload.html
+document.addEventListener('DOMContentLoaded', function () {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const form = document.getElementById('uploadForm');
+    const progressWrapper = document.getElementById('progressWrapper');
+    const progressBar = document.getElementById('progressBar');
+
+    function renderFileList(files) {
+        fileList.innerHTML = '';
+        Array.from(files).forEach(file => {
+            const sizeKB = (file.size / 1024).toFixed(1);
+            const item = document.createElement('div');
+            item.className = 'file-preview-item';
+            item.innerHTML = `<i class="bi bi-file-earmark-fill"></i> <span>${file.name}</span> <span class="text-muted small">${sizeKB} KB</span>`;
+            fileList.appendChild(item);
+        });
+    }
+
+    // Click anywhere in the drop zone opens the file browser
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => renderFileList(fileInput.files));
+
+    // Drag & Drop handlers (feature #18)
+    ['dragenter', 'dragover'].forEach(evt =>
+        dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.add('drag-active');
+        })
+    );
+    ['dragleave', 'drop'].forEach(evt =>
+        dropZone.addEventListener(evt, e => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+        })
+    );
+    dropZone.addEventListener('drop', e => {
+        fileInput.files = e.dataTransfer.files;
+        renderFileList(fileInput.files);
+    });
+
+    // Submit via XHR so we can show a real upload progress bar (feature #19)
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!fileInput.files.length) {
+            alert('Please choose at least one file.');
+            return;
+        }
+        const formData = new FormData(form);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', form.action, true);
+
+        progressWrapper.classList.remove('d-none');
+
+        xhr.upload.addEventListener('progress', function (evt) {
+            if (evt.lengthComputable) {
+                const percent = Math.round((evt.loaded / evt.total) * 100);
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = percent + '%';
+            }
+        });
+
+        xhr.onload = function () {
+            if (xhr.status >= 200 && xhr.status < 400) {
+                window.location.href = xhr.responseURL || "{% url 'my_files' %}";
+            } else {
+                alert('Upload failed. Please try again.');
+            }
+        };
+        xhr.send(formData);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,173 @@
+{% extends 'storage_app/base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3" data-aos="fade-down">
+        <div>
+            <h2 class="page-title">Welcome back, {{ user.username }} 👋</h2>
+            <p class="text-muted mb-0">
+                {% if subscription and subscription.plan %}
+                    You're on the <strong>{{ subscription.plan.name }}</strong> plan.
+                {% else %}
+                    You're on the <strong>Free</strong> plan.
+                {% endif %}
+                Here's what's happening with your storage today.
+            </p>
+        </div>
+        <form action="{% url 'my_files' %}" method="get" class="search-bar">
+            <i class="bi bi-search"></i>
+            <input type="text" name="q" class="form-control" placeholder="Search your files...">
+        </form>
+    </div>
+
+    <!-- ===== STAT CARDS (animated counters) ===== -->
+    <div class="row g-4 mb-4">
+        <div class="col-sm-6 col-lg-3" data-aos="fade-up" data-aos-delay="0">
+            <div class="glass-card stat-card">
+                <div class="stat-icon bg-indigo"><i class="bi bi-files"></i></div>
+                <div>
+                    <div class="stat-value"><span data-counter="{{ total_files }}">0</span></div>
+                    <div class="stat-label">Total Files</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3" data-aos="fade-up" data-aos-delay="100">
+            <div class="glass-card stat-card">
+                <div class="stat-icon bg-cyan"><i class="bi bi-hdd-fill"></i></div>
+                <div>
+                    <div class="stat-value">{{ storage.used_bytes|filesizeformat }}</div>
+                    <div class="stat-label">Storage Used</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3" data-aos="fade-up" data-aos-delay="200">
+            <div class="glass-card stat-card">
+                <div class="stat-icon bg-violet"><i class="bi bi-piggy-bank-fill"></i></div>
+                <div>
+                    <div class="stat-value">{% if storage.is_unlimited %}<i class="bi bi-infinity"></i>{% else %}{{ storage.remaining_bytes|filesizeformat }}{% endif %}</div>
+                    <div class="stat-label">Remaining</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3" data-aos="fade-up" data-aos-delay="300">
+            <div class="glass-card stat-card">
+                <div class="stat-icon bg-emerald"><i class="bi bi-folder-fill"></i></div>
+                <div>
+                    <div class="stat-value"><span data-counter="{{ total_folders }}">0</span></div>
+                    <div class="stat-label">Folders</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- ===== QUICK UPLOAD ===== -->
+        <div class="col-lg-4">
+            <div class="glass-card h-100 text-center d-flex flex-column justify-content-center align-items-center py-5" data-aos="zoom-in">
+                <i class="bi bi-cloud-arrow-up-fill floating-icon" style="font-size:3rem;color:var(--primary);"></i>
+                <h5 class="mt-3">Upload New Files</h5>
+                <p class="text-muted small">Drag &amp; drop or browse from your device</p>
+                <a href="{% url 'upload' %}" class="btn btn-gradient mt-2"><i class="bi bi-plus-lg"></i> Upload Now</a>
+            </div>
+        </div>
+
+        <!-- ===== STORAGE CHART ===== -->
+        <div class="col-lg-4">
+            <div class="glass-card h-100" data-aos="fade-up">
+                <h5 class="mb-3"><i class="bi bi-pie-chart-fill"></i> Storage by File Type</h5>
+                {% if type_breakdown %}
+                    <canvas id="storageChart" height="220"></canvas>
+                {% else %}
+                    <p class="text-muted small mb-0">Upload some files to see a breakdown here.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ===== FAVORITES ===== -->
+        <div class="col-lg-4">
+            <div class="glass-card h-100" data-aos="fade-up">
+                <h5 class="mb-3"><i class="bi bi-star-fill" style="color:#FBBF24;"></i> Favorite Files</h5>
+                {% if favorite_files %}
+                    <ul class="list-unstyled mb-0">
+                        {% for f in favorite_files %}
+                        <li class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                            <span class="text-truncate"><i class="bi bi-file-earmark-fill me-2 text-muted"></i>{{ f.file_name }}</span>
+                            <a href="{% url 'download_file' f.id %}" class="btn btn-sm btn-icon"><i class="bi bi-download"></i></a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted small mb-0">Star files in <a href="{% url 'my_files' %}">My Files</a> to pin them here.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RECENT UPLOADS ===== -->
+    <div class="row g-4 mt-1">
+        <div class="col-12">
+            <div class="glass-card" data-aos="fade-up">
+                <h5 class="mb-3"><i class="bi bi-clock-history"></i> Recent Uploads</h5>
+                {% if recent_uploads %}
+                <div class="table-responsive">
+                    <table class="table align-middle table-borderless mb-0">
+                        <thead>
+                            <tr class="text-muted small text-uppercase">
+                                <th>Name</th><th>Type</th><th>Size</th><th>Uploaded</th><th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for f in recent_uploads %}
+                            <tr>
+                                <td><i class="bi bi-file-earmark-fill me-2 text-muted"></i>{{ f.file_name }}</td>
+                                <td><span class="badge-file-type">{{ f.file_type|upper }}</span></td>
+                                <td>{{ f.size_display }}</td>
+                                <td class="text-muted small">{{ f.uploaded_at|timesince }} ago</td>
+                                <td class="text-end">
+                                    <a href="{% url 'download_file' f.id %}" class="btn btn-sm btn-icon"><i class="bi bi-download"></i></a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="text-muted mb-0">No files uploaded yet. <a href="{% url 'upload' %}">Upload your first file</a>.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if type_breakdown %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('storageChart');
+    if (!ctx || !window.Chart) return;
+
+    const labels = [{% for t in type_breakdown %}"{{ t.file_type|upper }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const data = [{% for t in type_breakdown %}{{ t.total_size }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: ['#4F46E5', '#7C3AED', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+            cutout: '65%',
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

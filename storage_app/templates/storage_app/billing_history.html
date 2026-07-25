@@ -1,0 +1,83 @@
+{% extends 'storage_app/base.html' %}
+{% block title %}Billing History{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h2 class="page-title mb-4">Billing &amp; Subscription</h2>
+
+    <div class="glass-card mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h5 class="mb-1">
+                    {% if subscription and subscription.plan %}
+                        Current Plan: {{ subscription.plan.name }}
+                        <span class="badge-file-type text-uppercase">{{ subscription.status }}</span>
+                    {% else %}
+                        Current Plan: Free
+                    {% endif %}
+                </h5>
+                {% if subscription and subscription.current_period_end %}
+                    <p class="text-muted small mb-0">
+                        {% if subscription.cancel_at_period_end %}
+                            Your plan will end on {{ subscription.current_period_end|date:"M d, Y" }}.
+                        {% else %}
+                            Renews {{ subscription.interval }} — next billing date {{ subscription.current_period_end|date:"M d, Y" }}.
+                        {% endif %}
+                    </p>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'pricing' %}" class="btn btn-outline-glass"><i class="bi bi-arrow-up-circle"></i> Change Plan</a>
+                {% if subscription and subscription.stripe_subscription_id and subscription.status == 'active' %}
+                    {% if subscription.cancel_at_period_end %}
+                        <form method="post" action="{% url 'resume_subscription' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-gradient">Resume Subscription</button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{% url 'cancel_subscription' %}" onsubmit="return confirm('Cancel your subscription at the end of the current billing period?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-glass text-danger">Cancel Subscription</button>
+                        </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <h5 class="mb-3"><i class="bi bi-receipt"></i> Payment History</h5>
+        {% if payments %}
+        <div class="table-responsive">
+            <table class="table align-middle table-borderless mb-0">
+                <thead>
+                    <tr class="text-muted small text-uppercase">
+                        <th>Date</th><th>Plan</th><th>Billing</th><th>Amount</th><th>Status</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for p in payments %}
+                    <tr>
+                        <td>{{ p.created_at|date:"M d, Y" }}</td>
+                        <td>{{ p.plan.name|default:"—" }}</td>
+                        <td class="text-capitalize">{{ p.interval }}</td>
+                        <td>${{ p.amount_usd }}</td>
+                        <td>
+                            <span class="badge-file-type {% if p.status == 'failed' %}text-danger{% endif %}">{{ p.status|upper }}</span>
+                        </td>
+                        <td class="text-end">
+                            {% if p.invoice_url %}
+                                <a href="{{ p.invoice_url }}" target="_blank" rel="noopener" class="btn btn-sm btn-icon" title="View Invoice"><i class="bi bi-file-earmark-pdf"></i></a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p class="text-muted mb-0">No payments yet. <a href="{% url 'pricing' %}">Upgrade your plan</a> to see billing history here.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

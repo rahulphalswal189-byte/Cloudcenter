@@ -1,0 +1,246 @@
+{% extends 'storage_app/base.html' %}
+{% load storage_filters %}
+{% block title %}My Files{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+        <h2 class="page-title mb-0">
+            {% if current_folder %}
+                <a href="{% url 'my_files' %}" class="text-decoration-none"><i class="bi bi-arrow-left"></i></a>
+                <i class="bi bi-folder-fill"></i> {{ current_folder.name }}
+            {% elif favorites_only %}
+                <i class="bi bi-star-fill" style="color:#FBBF24;"></i> Favorites
+            {% else %}
+                My Files
+            {% endif %}
+        </h2>
+        <div class="d-flex flex-wrap gap-2">
+            <form action="{% url 'my_files' %}" method="get" class="search-bar">
+                {% if current_folder %}<input type="hidden" name="folder" value="{{ current_folder.id }}">{% endif %}
+                <i class="bi bi-search"></i>
+                <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search files...">
+            </form>
+            <button class="btn btn-outline-glass" data-bs-toggle="modal" data-bs-target="#newFolderModal"><i class="bi bi-folder-plus"></i> New Folder</button>
+            <a href="{% url 'upload' %}" class="btn btn-gradient"><i class="bi bi-upload"></i> Upload</a>
+        </div>
+    </div>
+
+    <!-- ===== BREADCRUMBS ===== -->
+    {% if breadcrumbs %}
+    <nav class="breadcrumb-glass mb-3" aria-label="breadcrumb">
+        <a href="{% url 'my_files' %}"><i class="bi bi-house-fill"></i> My Files</a>
+        {% for crumb in breadcrumbs %}
+            <span class="text-muted mx-1">/</span>
+            {% if forloop.last %}
+                <span>{{ crumb.name }}</span>
+            {% else %}
+                <a href="{% url 'my_files' %}?folder={{ crumb.id }}">{{ crumb.name }}</a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+    {% endif %}
+
+    <!-- ===== TOOLBAR: sort / filter / favorites / view toggle ===== -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div class="d-flex flex-wrap gap-2">
+            <a href="?favorites=1{% if current_folder %}&folder={{ current_folder.id }}{% endif %}"
+               class="btn btn-sm {% if favorites_only %}btn-gradient{% else %}btn-outline-glass{% endif %}">
+                <i class="bi bi-star-fill"></i> Favorites
+            </a>
+
+            <form action="{% url 'my_files' %}" method="get" class="d-flex gap-2">
+                {% if current_folder %}<input type="hidden" name="folder" value="{{ current_folder.id }}">{% endif %}
+                {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+                <select name="type" class="form-select form-select-sm" onchange="this.form.submit()" style="width:auto;">
+                    <option value="">All types</option>
+                    {% for t in available_types %}
+                        <option value="{{ t }}" {% if type_filter == t %}selected{% endif %}>{{ t|upper }}</option>
+                    {% endfor %}
+                </select>
+                <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()" style="width:auto;">
+                    <option value="-uploaded_at" {% if sort == '-uploaded_at' %}selected{% endif %}>Newest first</option>
+                    <option value="uploaded_at" {% if sort == 'uploaded_at' %}selected{% endif %}>Oldest first</option>
+                    <option value="file_name" {% if sort == 'file_name' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="-file_name" {% if sort == '-file_name' %}selected{% endif %}>Name (Z-A)</option>
+                    <option value="-file_size" {% if sort == '-file_size' %}selected{% endif %}>Largest first</option>
+                    <option value="file_size" {% if sort == 'file_size' %}selected{% endif %}>Smallest first</option>
+                </select>
+            </form>
+        </div>
+
+        <div class="view-toggle">
+            <button type="button" class="btn btn-sm btn-outline-glass view-toggle-btn active" data-view="grid" title="Grid view"><i class="bi bi-grid-3x3-gap-fill"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-glass view-toggle-btn" data-view="list" title="List view"><i class="bi bi-list-ul"></i></button>
+        </div>
+    </div>
+
+    <!-- ===== FOLDERS ===== -->
+    {% if folders and not query and not favorites_only %}
+    <div class="row g-3 mb-4">
+        {% for folder in folders %}
+        <div class="col-6 col-md-3 col-lg-2" data-aos="fade-up">
+            <a href="{% url 'my_files' %}?folder={{ folder.id }}" class="text-decoration-none">
+                <div class="glass-card folder-card text-center">
+                    <i class="bi bi-folder-fill folder-icon"></i>
+                    <div class="folder-name">{{ folder.name }}</div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ===== FILES ===== -->
+    {% if page_obj %}
+    <div class="row g-3" id="filesContainer">
+        {% for f in page_obj %}
+        <div class="col-6 col-md-4 col-lg-3 file-item" data-aos="fade-up" data-aos-delay="{{ forloop.counter0 }}0">
+            <div class="glass-card file-card">
+                <button class="favorite-star {% if f.is_favorite %}active{% endif %}" title="Toggle favorite"
+                        onclick="document.getElementById('favForm{{ f.id }}').submit(); return false;">
+                    <i class="bi {% if f.is_favorite %}bi-star-fill{% else %}bi-star{% endif %}"></i>
+                </button>
+                <form id="favForm{{ f.id }}" action="{% url 'toggle_favorite' f.id %}" method="post" class="d-none">{% csrf_token %}</form>
+
+                <div class="file-card-icon">
+                    {% if f.file_type in 'jpg,jpeg,png,gif,webp,svg'|split:"," %}
+                        <i class="bi bi-file-image-fill"></i>
+                    {% elif f.file_type == 'pdf' %}
+                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                    {% elif f.file_type in 'zip,rar,7z,tar,gz'|split:"," %}
+                        <i class="bi bi-file-zip-fill"></i>
+                    {% elif f.file_type in 'mp4,mov,avi,mkv'|split:"," %}
+                        <i class="bi bi-file-play-fill"></i>
+                    {% else %}
+                        <i class="bi bi-file-earmark-fill"></i>
+                    {% endif %}
+                </div>
+                <div class="file-card-name" title="{{ f.file_name }}">{{ f.file_name }}</div>
+                <div class="file-card-meta text-muted small">{{ f.size_display }} &bull; {{ f.uploaded_at|timesince }} ago</div>
+
+                <div class="file-card-actions">
+                    <a href="{% url 'download_file' f.id %}" class="btn btn-icon" title="Download"><i class="bi bi-download"></i></a>
+                    <button class="btn btn-icon" title="Rename" data-bs-toggle="modal" data-bs-target="#renameModal{{ f.id }}"><i class="bi bi-pencil-fill"></i></button>
+                    <form action="{% url 'toggle_share' f.id %}" method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-icon" title="{% if f.is_shared %}Sharing ON{% else %}Share{% endif %}">
+                            <i class="bi {% if f.is_shared %}bi-share-fill text-success{% else %}bi-share{% endif %}"></i>
+                        </button>
+                    </form>
+                    <button class="btn btn-icon text-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#deleteModal{{ f.id }}"><i class="bi bi-trash-fill"></i></button>
+                </div>
+
+                {% if f.is_shared %}
+                <div class="share-link-box mt-2">
+                    <input type="text" class="form-control form-control-sm" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ f.get_share_url }}">
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Rename modal -->
+        <div class="modal fade" id="renameModal{{ f.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content glass-modal">
+                    <form method="post" action="{% url 'rename_file' f.id %}">
+                        {% csrf_token %}
+                        <div class="modal-header"><h5 class="modal-title">Rename File</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-body">
+                            <input type="text" name="new_name" class="form-control" value="{{ f.file_name }}" required>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-glass" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-gradient">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete confirmation modal -->
+        <div class="modal fade" id="deleteModal{{ f.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content glass-modal">
+                    <div class="modal-header"><h5 class="modal-title">Delete File</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">Are you sure you want to delete <strong>{{ f.file_name }}</strong>? This cannot be undone.</div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-glass" data-bs-dismiss="modal">Cancel</button>
+                        <form method="post" action="{% url 'delete_file' f.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&sort={{ sort }}&type={{ type_filter }}">Previous</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ query }}&sort={{ sort }}&type={{ type_filter }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-inbox floating-icon"></i>
+        <h5>No files found</h5>
+        <p class="text-muted">{% if query %}No results for "{{ query }}".{% elif favorites_only %}You haven't starred any files yet.{% else %}Upload your first file to get started.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- New Folder Modal -->
+<div class="modal fade" id="newFolderModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-modal">
+            <form method="post" action="{% url 'create_folder' %}">
+                {% csrf_token %}
+                <div class="modal-header"><h5 class="modal-title">Create Folder</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <label class="form-label">Folder name</label>
+                    {{ folder_form.name }}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-glass" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-gradient">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Grid / List view toggle - purely visual, swaps a CSS class on the files container
+document.addEventListener('DOMContentLoaded', function () {
+    const buttons = document.querySelectorAll('.view-toggle-btn');
+    const container = document.getElementById('filesContainer');
+    if (!container) return;
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function () {
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (btn.dataset.view === 'list') {
+                container.classList.add('list-view');
+            } else {
+                container.classList.remove('list-view');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
