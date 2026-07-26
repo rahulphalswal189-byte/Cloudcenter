@@ -16,13 +16,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep this secret in production! Use an environment
 # variable instead of hardcoding it (e.g. os.environ["DJANGO_SECRET_KEY"]).
 # -----------------------------------------------------------------------
-SECRET_KEY = 'django-insecure-CHANGE-THIS-KEY-BEFORE-DEPLOYING-TO-PRODUCTION'
-
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-change-this-before-production"
+)
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-
+ALLOWED_HOSTS = os.environ.get(
+    "ALLOWED_HOSTS",
+    "127.0.0.1,localhost,.onrender.com"
+).split(",")
 # -----------------------------------------------------------------------
 # Application definition
 # -----------------------------------------------------------------------
@@ -43,6 +47,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',        # CSRF protection
@@ -105,7 +110,12 @@ USE_TZ = True
 # -----------------------------------------------------------------------
 # Static files (CSS, JavaScript)
 # -----------------------------------------------------------------------
-STATIC_URL = 'static/'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STATICFILES_STORAGE = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+)
 STATICFILES_DIRS = [BASE_DIR / 'storage_app' / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'  # used by `collectstatic` in production
 
