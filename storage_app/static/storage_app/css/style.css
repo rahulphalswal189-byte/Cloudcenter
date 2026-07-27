@@ -395,3 +395,100 @@ html[data-theme="dark"] .form-select { background: rgba(30,41,59,0.6); color: va
     box-shadow: 0 0 0 0.2rem rgba(79,70,229,0.2);
     background: rgba(255,255,255,0.9);
 }
+/* ============================================================
+   DARK THEME – readability fixes
+   ============================================================ */
+
+/* Force body + common elements to use theme text color */
+html[data-theme="dark"] body,
+html[data-theme="dark"] .glass-card,
+html[data-theme="dark"] .glass-modal,
+html[data-theme="dark"] .page-content {
+    color: var(--text);
+}
+
+/* Bootstrap text helpers */
+html[data-theme="dark"] .text-muted {
+    color: var(--text-muted) !important;
+}
+html[data-theme="dark"] .text-dark,
+html[data-theme="dark"] .text-body {
+    color: var(--text) !important;
+}
+
+/* Form controls – light text on dark backgrounds */
+html[data-theme="dark"] .form-control,
+html[data-theme="dark"] .form-select {
+    background-color: rgba(30, 41, 59, 0.7) !important;
+    color: var(--text) !important;
+    border-color: var(--glass-border);
+}
+html[data-theme="dark"] .form-control::placeholder {
+    color: #94A3B8;
+    opacity: 0.8;
+}
+html[data-theme="dark"] .form-control:focus,
+html[data-theme="dark"] .form-select:focus {
+    background-color: rgba(30, 41, 59, 0.95) !important;  /* was white */
+    color: var(--text) !important;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+
+/* Tables (dashboard, billing history, recent uploads) */
+html[data-theme="dark"] .table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text);
+    --bs-table-border-color: var(--glass-border);
+    color: var(--text);
+}
+html[data-theme="dark"] .table thead th {
+    color: var(--text-muted);
+    border-bottom-color: var(--glass-border);
+}
+html[data-theme="dark"] .table td,
+html[data-theme="dark"] .table th {
+    border-color: var(--glass-border);
+    color: var(--text);
+}
+
+/* Modals */
+html[data-theme="dark"] .modal-content {
+    background: var(--glass-bg);
+    color: var(--text);
+    border: 1px solid var(--glass-border);
+}
+html[data-theme="dark"] .modal-header,
+html[data-theme="dark"] .modal-footer {
+    border-color: var(--glass-border);
+}
+html[data-theme="dark"] .btn-close {
+    filter: invert(1);
+}
+
+/* Dropdowns / list groups if used */
+html[data-theme="dark"] .dropdown-menu {
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+}
+html[data-theme="dark"] .dropdown-item {
+    color: var(--text);
+}
+html[data-theme="dark"] .dropdown-item:hover {
+    background: rgba(79, 70, 229, 0.2);
+    color: #fff;
+}
+
+/* Progress bars / badges that might need a boost */
+html[data-theme="dark"] .progress {
+    background-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Links stay primary, but make sure visited/hover don’t go dark */
+html[data-theme="dark"] a:not(.btn):not(.sidebar-nav a) {
+    color: #818CF8; /* slightly lighter indigo for dark bg */
+}
+html[data-theme="dark"] a:not(.btn):not(.sidebar-nav a):hover {
+    color: #A5B4FC;
+}
